@@ -46,21 +46,95 @@ Admins and auditors can later verify KYC, manage roles, and access logs through 
 
 ## 🧩 Database Schema
 
-### **1️⃣ Customer Table**
+# 🧩 Core Database Tables
+
+---
+
+## 1️⃣ User Table
+
+| Field | Type | Description |
+|--------|------|-------------|
+| id | Auto | Primary key |
+| username | CharField | Unique login ID |
+| email | EmailField | User email |
+| password | CharField | Encrypted password |
+| is_active | Boolean | Determines if the user can log in |
+| role | CharField | Role assigned → customer / admin / auditor |
+| date_joined | DateTime | Account creation date |
+| last_login | DateTime | Last login timestamp |
+
+**Purpose:**  
+Base authentication table used by Django. Every user (customer, admin, auditor) originates from here.
+
+---
+
+##  Customer Table
 
 | Field | Type | Description | Access |
 |--------|------|-------------|---------|
-| `uuid` | UUID | Primary key | System |
-| `user` | OneToOne(User) | Linked Django user | System |
-| `address` | TextField | Customer address | User |
-| `phone` | CharField(15) | Contact number | User |
-| `kyc_file` | FileField | KYC proof | User |
-| `role` | CharField | Role (admin/auditor/customer) | Admin only |
-| `account_status` | CharField | active/suspended/closed | Admin only |
-| `is_verified` | Boolean | KYC verified | Admin only |
-| `promotion_id` | FK → Promotion | Who promoted this user | System |
-| `created_at` | DateTime | Creation time | System |
-| `updated_at` | DateTime | Updated time | System |
+| user | OneToOne(User) | Linked user account | System |
+| address | TextField | Customer address | Customer |
+| phone | CharField(15) | Contact number | Customer |
+| kyc_file | FileField | Uploaded KYC document | Customer |
+| is_verified | Boolean | KYC approved by admin | Admin only |
+| account_status | CharField | active / suspended / closed | Admin only |
+| created_at | DateTime | Record creation timestamp | System |
+| updated_at | DateTime | Record update timestamp | System |
+
+**Purpose:**  
+Stores customer-specific profile and KYC information.  
+Customers can only see and modify their personal info — KYC approval and account status are managed by Admins.
+
+---
+
+##  CustomerVerification Table
+
+| Field | Type | Description | Access |
+|--------|------|-------------|---------|
+| id | Auto | Primary key | System |
+| customer | FK(Customer) | Customer being verified | System |
+| verified_by | FK(Admin) | Admin who reviewed KYC | Admin |
+| verified_at | DateTime | Time of verification | System |
+| status | CharField | approved / pending / rejected | Admin |
+| remarks | TextField | Admin remarks on verification | Admin |
+
+**Purpose:**  
+Keeps a record of every KYC verification performed by an Admin.  
+Used for auditing and traceability — accessible to Auditors for read-only review.
+
+---
+
+##  Admin Table
+
+| Field | Type | Description | Access |
+|--------|------|-------------|---------|
+| user | OneToOne(User) | Linked user account | System |
+| employee_id | CharField | Unique admin ID | System |
+| department | CharField | Department name (e.g., Compliance, KYC) | System |
+| verified_count | Integer | Number of customers verified | Admin |
+| last_activity | DateTime | Recent admin activity | System |
+| created_at | DateTime | Created timestamp | System |
+
+**Purpose:**  
+Represents system administrators who manage customer verifications and account statuses.  
+Each admin’s activity is logged and reviewable by auditors.
+
+---
+
+##  Auditor Table
+
+| Field | Type | Description | Access |
+|--------|------|-------------|---------|
+| user | OneToOne(User) | Linked user account | System |
+| auditor_id | CharField | Unique auditor code | System |
+| access_scope | CharField | full / regional / limited | System |
+| last_audit_date | DateTime | Last audit performed | Auditor |
+| remarks | TextField | Optional notes | Auditor |
+| created_at | DateTime | Created timestamp | System |
+
+**Purpose:**  
+Auditors have read-only access to key operational data (KYC, verifications, audit logs).  
+They ensure compliance and transparency across the system.
 
 ---
 
