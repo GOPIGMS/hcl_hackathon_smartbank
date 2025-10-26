@@ -1,69 +1,109 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.conf import settings
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 
-class User(AbstractUser):
-    ROLE_CHOICES = [
-        ('customer', 'Customer'),
-        ('admin', 'Admin'),
-        ('auditor', 'Auditor'),
-    ]
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer')
-    date_joined = models.DateTimeField(auto_now_add=True)
-    last_login = models.DateTimeField(auto_now=True)
+# ---------------------------
+# Custom User Manager
+# ---------------------------
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("Email is required")
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
 
-    def __str__(self):
-        return f"{self.username} ({self.role})"
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
+
+        return self.create_user(email, password, **extra_fields)
 
 
-class Customer(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='customer_profile')
-    address = models.TextField(blank=True, null=True)
-    phone = models.CharField(max_length=15)
-    kyc_file = models.FileField(upload_to='kyc_docs/', blank=True, null=True)
-    is_verified = models.BooleanField(default=False)
-    account_status = models.CharField(max_length=20, default='active')
+# ---------------------------
+# Custom User Model
+# ---------------------------
+class CustomUser(AbstractUser):
+    username = None
+    email = models.EmailField(unique=True)
+
+    phone = models.CharField(max_length=15, null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+    objects = CustomUserManager()
 
     def __str__(self):
-        return f"{self.user.username} - {self.account_status}"
+        return self.email
 
 
+# ---------------------------
+# Admin Model
+# ---------------------------
 class Admin(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
-    employee_id = models.CharField(max_length=50, unique=True)
-    department = models.CharField(max_length=100)
-    verified_count = models.IntegerField(default=0)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    employee_id = models.CharField(max_length=20, unique=True)
+    department = models.CharField(max_length=50)
     last_activity = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Admin: {self.user.username}"
+        return self.user.email
 
 
+# ---------------------------
+# Auditor Model
+# ---------------------------
 class Auditor(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='auditor_profile')
-    auditor_id = models.CharField(max_length=50, unique=True)
-    access_scope = models.CharField(max_length=50, default='limited')
-    last_audit_date = models.DateTimeField(blank=True, null=True)
-    remarks = models.TextField(blank=True, null=True)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    auditor_id = models.CharField(max_length=20, unique=True)
+    last_audit_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Auditor: {self.user.username}"
+        return self.user.email
 
 
+# ---------------------------
+# Customer Model
+# ---------------------------
+class Customer(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    address = models.TextField()
+    phone = models.CharField(max_length=15)
+    kyc_file = models.FileField(upload_to="kyc_files/")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.user.email
+
+
+# ---------------------------
+# Customer Verification Model
+# ---------------------------
 class CustomerVerification(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
+        ("approved", "Approved"),
+        ("pending", "Pending"),
+        ("rejected", "Rejected"),
     ]
+
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     verified_by = models.ForeignKey(Admin, on_delete=models.SET_NULL, null=True)
     verified_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
     remarks = models.TextField(blank=True, null=True)
 
     def __str__(self):
-        return f"{self.customer.user.username} - {self.status}"
+        return f"{self.customer.user.email} - {self.status}"
