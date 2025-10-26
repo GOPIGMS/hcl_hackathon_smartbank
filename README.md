@@ -55,7 +55,6 @@ Admins and auditors can later verify KYC, manage roles, and access logs through 
 | `address` | TextField | Customer address | User |
 | `phone` | CharField(15) | Contact number | User |
 | `kyc_file` | FileField | KYC proof | User |
-| `account` | OneToOne(Account) | Account link | System |
 | `role` | CharField | Role (admin/auditor/customer) | Admin only |
 | `account_status` | CharField | active/suspended/closed | Admin only |
 | `is_verified` | Boolean | KYC verified | Admin only |
