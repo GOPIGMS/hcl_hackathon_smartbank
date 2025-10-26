@@ -25,18 +25,22 @@ All key operations (registration, transactions, verifications) are tracked via a
 
 ---
 
-## 🧱 Module Overview
+### Module Name
+**1. User Registration and KYC**
 
-| Module | Purpose |
-|---------|----------|
-| `users/` | Registration, login, JWT handling, promotion system |
-| `customers/` | Customer details, KYC, profile management |
-| `accounts/` | Account creation, balance & status management |
-| `transactions/` | Fund transfers, deposits, withdrawals |
-| `loan_verify/` | Loan request and admin verification |
-| `fraud_verify/` | Fraud detection & resolution system |
-| `promotion/` | Role promotion tracking |
-| `audit/` | Central logging and read-only access for auditors |
+
+### Description
+This module allows:
+- Customers to register using their basic details.
+- Upload KYC documents for verification.
+- Automatically assign UUIDs and roles.
+- Authentication using **JWT tokens**.
+- Enforced **rate limits** to prevent abuse.
+- **Audit logging** for all registration and verification activities.
+
+Admins and auditors can later verify KYC, manage roles, and access logs through secure endpoints.
+
+---
 
 ---
 
@@ -192,3 +196,12 @@ Admins and auditors can filter transactions via:
 - **Auditor** → Read-only (`GET`)  
 - **Customer** → ❌ No access  
 
+### DRF Permission Example
+```python
+class IsAuditor(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.groups.filter(name='auditor_group').exists()
+
+class IsAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.groups.filter(name='admin_group').exists()
