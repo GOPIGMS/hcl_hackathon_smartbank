@@ -269,12 +269,4 @@ Admins and auditors can filter transactions via:
 - **Auditor** → Read-only (`GET`)  
 - **Customer** → ❌ No access  
 
-### DRF Permission Example
-```python
-class IsAuditor(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.groups.filter(name='auditor_group').exists()
 
-class IsAdmin(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.groups.filter(name='admin_group').exists()
